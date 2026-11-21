@@ -1,0 +1,33 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ATM Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>🏧 ATM DASHBOARD</h1>
+    <h2>Welcome!</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <div class="message">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <p>Account Number: <b>{{ user.account_no }}</b></p>
+
+    <div class="balance">
+        Available Balance<br>
+        ₹{{ user.balance }}
+    </div>
+
+    <a href="{{ url_for('balance') }}"><button>CHECK BALANCE</button></a>
+    <a href="{{ url_for('deposit') }}"><button>DEPOSIT MONEY</button></a>
+    <a href="{{ url_for('withdraw') }}"><button>WITHDRAW MONEY</button></a>
+    <a href="{{ url_for('statement') }}"><button>MINI STATEMENT</button></a>
+    <a href="{{ url_for('logout') }}"><button class="logout">LOGOUT</button></a>
+</div>
+</body>
+</html>

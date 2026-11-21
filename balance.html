@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Balance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>ACCOUNT BALANCE</h1>
+    <p>Account Number: {{ user.account_no }}</p>
+
+    <div class="balance">
+        Your Available Balance<br>
+        ₹{{ user.balance }}
+    </div>
+
+    <a href="{{ url_for('dashboard') }}"><button>BACK TO DASHBOARD</button></a>
+</div>
+</body>
+</html>

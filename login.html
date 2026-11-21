@@ -1,0 +1,36 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ATM Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>🏧 ATM SIMULATION</h1>
+    <h2>Welcome Back</h2>
+    <p>Please login to continue</p>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <div class="message">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+        <label>Account Number</label>
+        <input type="text" name="account_no" placeholder="Enter account number" required>
+
+        <label>ATM PIN</label>
+        <input type="password" name="pin" placeholder="Enter PIN" required>
+
+        <button type="submit">LOGIN</button>
+    </form>
+
+    <p class="demo">
+        Demo Account: 123456<br>
+        Demo PIN: 1234
+    </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini Statement</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>MINI STATEMENT</h1>
+    <p>Your recent transactions</p>
+
+    <table>
+        <tr>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Date</th>
+        </tr>
+
+        {% for item in transactions %}
+        <tr>
+            <td>{{ item.transaction_type }}</td>
+            <td>₹{{ item.amount }}</td>
+            <td>{{ item.transaction_date }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="3">No transactions found</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <a href="{{ url_for('dashboard') }}"><button>BACK TO DASHBOARD</button></a>
+</div>
+</body>
+</html>
