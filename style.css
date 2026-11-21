@@ -1,0 +1,132 @@
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #101d35, #24527a);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    background: white;
+    width: 430px;
+    max-width: 100%;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+h1 {
+    color: #17365d;
+    font-size: 26px;
+}
+
+h2 {
+    color: #24527a;
+}
+
+p {
+    color: #555;
+}
+
+label {
+    display: block;
+    text-align: left;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 13px;
+    margin: 10px 0;
+    border: 1px solid #bbb;
+    border-radius: 7px;
+    font-size: 15px;
+}
+
+button {
+    width: 100%;
+    padding: 13px;
+    margin: 8px 0;
+    background: #1565c0;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #003c8f;
+}
+
+a {
+    text-decoration: none;
+}
+
+.balance {
+    background: #e0f2f1;
+    color: #00695c;
+    padding: 22px;
+    margin: 20px 0;
+    border-radius: 10px;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.logout {
+    background: #d32f2f;
+}
+
+.logout:hover {
+    background: #9a0007;
+}
+
+.message {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 7px;
+}
+
+.demo {
+    background: #f0f4f8;
+    padding: 12px;
+    border-radius: 7px;
+    font-size: 14px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+}
+
+th, td {
+    padding: 10px 5px;
+    border: 1px solid #ddd;
+    overflow-wrap: anywhere;
+}
+
+th {
+    background: #1565c0;
+    color: white;
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 20px;
+    }
+}
