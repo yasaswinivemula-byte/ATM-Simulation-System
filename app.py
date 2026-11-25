@@ -1,248 +1,261 @@
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-import sqlite3
 import os
+import sqlite3
+from functools import wraps
+from flask import Flask, render_template, request, session, redirect
 
 app = Flask(__name__)
-app.secret_key = "ATM_SIMULATION_DEMO_SECRET_KEY"
+app.secret_key = os.environ.get("SECRET_KEY", "atm_project_secret_key")
 
+# Keep the database in the project folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(BASE_DIR, "atm_system.db")
+DATABASE = os.path.join(BASE_DIR, "atm.db")
 
 
-# DATABASE CONNECTION
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+def connect_db():
+    return sqlite3.connect(DATABASE)
 
 
-# CREATE DATABASE
-def initialize_database():
-    conn = get_db()
+# Create database tables automatically when the app starts
+def create_database():
+    con = connect_db()
+    cur = con.cursor()
 
-    conn.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS accounts (
             account_no TEXT PRIMARY KEY,
-            pin_hash TEXT NOT NULL,
-            balance INTEGER NOT NULL
+            pin TEXT NOT NULL,
+            balance REAL NOT NULL
         )
     """)
 
-    conn.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            account_no TEXT NOT NULL,
-            transaction_type TEXT NOT NULL,
-            amount INTEGER NOT NULL,
-            transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            account_no TEXT,
+            type TEXT,
+            amount REAL
         )
     """)
 
-    account = conn.execute(
-        "SELECT account_no FROM accounts WHERE account_no = ?",
-        ("123456",)
-    ).fetchone()
+    cur.execute("""
+        INSERT OR IGNORE INTO accounts
+        (account_no, pin, balance)
+        VALUES ('1234567890', '1234', 10000)
+    """)
 
-    if account is None:
-        conn.execute("""
-            INSERT INTO accounts
-            (account_no, pin_hash, balance)
-            VALUES (?, ?, ?)
-        """, (
-            "123456",
-            generate_password_hash("1234"),
-            10000
-        ))
-
-    conn.commit()
-    conn.close()
+    con.commit()
+    con.close()
 
 
-# LOGIN PROTECTION
+# IMPORTANT: Run database setup when Render imports this file
+create_database()
+
+
 def login_required(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
         if "account_no" not in session:
-            return redirect(url_for("login"))
+            return redirect("/")
         return function(*args, **kwargs)
     return wrapper
 
 
-# LOGIN
 @app.route("/", methods=["GET", "POST"])
-def login():
-
+def home():
     if request.method == "POST":
-        account_no = request.form.get("account_no", "").strip()
-        pin = request.form.get("pin", "")
+        account_no = request.form.get("account_no")
+        pin = request.form.get("pin")
 
-        conn = get_db()
+        con = connect_db()
+        cur = con.cursor()
 
-        user = conn.execute(
-            "SELECT * FROM accounts WHERE account_no = ?",
-            (account_no,)
-        ).fetchone()
+        cur.execute(
+            "SELECT * FROM accounts WHERE account_no=? AND pin=?",
+            (account_no, pin)
+        )
 
-        conn.close()
+        account = cur.fetchone()
+        con.close()
 
-        if user and check_password_hash(user["pin_hash"], pin):
-            session.clear()
+        if account:
             session["account_no"] = account_no
-            return redirect(url_for("dashboard"))
+            return redirect("/dashboard")
 
-        flash("Invalid account number or PIN!")
+        return """
+        <h1>Invalid Account Number or PIN!</h1>
+        <a href="/">Try Again</a>
+        """
+
+    if "account_no" in session:
+        return redirect("/dashboard")
 
     return render_template("login.html")
 
 
-# DASHBOARD
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
-    conn = get_db()
-
-    user = conn.execute(
-        "SELECT * FROM accounts WHERE account_no = ?",
-        (session["account_no"],)
-    ).fetchone()
-
-    conn.close()
-
-    return render_template("dashboard.html", user=user)
+    return render_template("dashboard.html")
 
 
-# BALANCE
 @app.route("/balance")
 @login_required
 def balance():
+    con = connect_db()
+    cur = con.cursor()
 
-    conn = get_db()
-
-    user = conn.execute(
-        "SELECT * FROM accounts WHERE account_no = ?",
+    cur.execute(
+        "SELECT balance FROM accounts WHERE account_no=?",
         (session["account_no"],)
-    ).fetchone()
+    )
 
-    conn.close()
+    balance_amount = cur.fetchone()[0]
+    con.close()
 
-    return render_template("balance.html", user=user)
+    return render_template("balance.html", balance=balance_amount)
 
 
-# DEPOSIT
 @app.route("/deposit", methods=["GET", "POST"])
 @login_required
 def deposit():
+    message = ""
+    account_no = session["account_no"]
+
+    con = connect_db()
+    cur = con.cursor()
 
     if request.method == "POST":
         try:
-            amount = int(request.form.get("amount", "0"))
+            amount = float(request.form.get("amount", 0))
 
             if amount <= 0:
-                flash("Enter a valid amount!")
-                return redirect(url_for("deposit"))
+                message = "Please enter a valid amount."
+            else:
+                cur.execute(
+                    "UPDATE accounts SET balance = balance + ? WHERE account_no=?",
+                    (amount, account_no)
+                )
 
-            conn = get_db()
+                cur.execute("""
+                    INSERT INTO transactions (account_no, type, amount)
+                    VALUES (?, ?, ?)
+                """, (account_no, "Deposit", amount))
 
-            conn.execute(
-                "UPDATE accounts SET balance = balance + ? WHERE account_no = ?",
-                (amount, session["account_no"])
-            )
-
-            conn.execute("""
-                INSERT INTO transactions
-                (account_no, transaction_type, amount)
-                VALUES (?, ?, ?)
-            """, (session["account_no"], "Deposit", amount))
-
-            conn.commit()
-            conn.close()
-
-            flash(f"₹{amount} deposited successfully!")
-            return redirect(url_for("dashboard"))
+                con.commit()
+                message = "Money Deposited Successfully!"
 
         except ValueError:
-            flash("Please enter a valid whole number!")
+            message = "Please enter a valid number."
 
-    return render_template("deposit.html")
+    cur.execute(
+        "SELECT balance FROM accounts WHERE account_no=?",
+        (account_no,)
+    )
+    balance_amount = cur.fetchone()[0]
+    con.close()
+
+    return render_template(
+        "deposit.html",
+        balance=balance_amount,
+        message=message
+    )
 
 
-# WITHDRAW
 @app.route("/withdraw", methods=["GET", "POST"])
 @login_required
 def withdraw():
+    message = ""
+    account_no = session["account_no"]
+
+    con = connect_db()
+    cur = con.cursor()
 
     if request.method == "POST":
         try:
-            amount = int(request.form.get("amount", "0"))
+            amount = float(request.form.get("amount", 0))
+
+            cur.execute(
+                "SELECT balance FROM accounts WHERE account_no=?",
+                (account_no,)
+            )
+            balance_amount = cur.fetchone()[0]
 
             if amount <= 0:
-                flash("Enter a valid amount!")
-                return redirect(url_for("withdraw"))
-
-            conn = get_db()
-
-            cursor = conn.execute("""
-                UPDATE accounts
-                SET balance = balance - ?
-                WHERE account_no = ? AND balance >= ?
-            """, (amount, session["account_no"], amount))
-
-            if cursor.rowcount == 0:
-                conn.rollback()
-                flash("Insufficient balance!")
+                message = "Please enter a valid amount."
+            elif amount > balance_amount:
+                message = "Insufficient Balance!"
             else:
-                conn.execute("""
-                    INSERT INTO transactions
-                    (account_no, transaction_type, amount)
+                cur.execute(
+                    "UPDATE accounts SET balance = balance - ? WHERE account_no=?",
+                    (amount, account_no)
+                )
+
+                cur.execute("""
+                    INSERT INTO transactions (account_no, type, amount)
                     VALUES (?, ?, ?)
-                """, (session["account_no"], "Withdrawal", amount))
+                """, (account_no, "Withdrawal", amount))
 
-                conn.commit()
-                flash(f"₹{amount} withdrawn successfully!")
-
-            conn.close()
-            return redirect(url_for("dashboard"))
+                con.commit()
+                message = "Money Withdrawn Successfully!"
 
         except ValueError:
-            flash("Please enter a valid whole number!")
+            message = "Please enter a valid number."
 
-    return render_template("withdraw.html")
+    cur.execute(
+        "SELECT balance FROM accounts WHERE account_no=?",
+        (account_no,)
+    )
+    balance_amount = cur.fetchone()[0]
+    con.close()
+
+    return render_template(
+        "withdraw.html",
+        balance=balance_amount,
+        message=message
+    )
 
 
-# MINI STATEMENT
 @app.route("/statement")
 @login_required
 def statement():
+    account_no = session["account_no"]
 
-    conn = get_db()
+    con = connect_db()
+    cur = con.cursor()
 
-    transactions = conn.execute("""
-        SELECT * FROM transactions
-        WHERE account_no = ?
+    cur.execute(
+        "SELECT balance FROM accounts WHERE account_no=?",
+        (account_no,)
+    )
+    balance_amount = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT type, amount FROM transactions
+        WHERE account_no=?
         ORDER BY id DESC
-    """, (session["account_no"],)).fetchall()
+    """, (account_no,))
 
-    conn.close()
+    rows = cur.fetchall()
+    con.close()
+
+    transactions = [
+        {"type": row[0], "amount": row[1]}
+        for row in rows
+    ]
 
     return render_template(
         "statement.html",
+        balance=balance_amount,
         transactions=transactions
     )
 
 
-# LOGOUT
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("You have logged out successfully!")
-    return redirect(url_for("login"))
+    return redirect("/")
 
 
-# START APPLICATION
 if __name__ == "__main__":
-    initialize_database()
-    app.run(host="127.0.0.1", port=8000, debug=True)
+    app.run(debug=True)
