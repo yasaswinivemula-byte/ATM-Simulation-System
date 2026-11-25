@@ -10,17 +10,11 @@
     <h1>🏧 ATM DASHBOARD</h1>
     <h2>Welcome!</h2>
 
-    {% with messages = get_flashed_messages() %}
-        {% for message in messages %}
-            <div class="message">{{ message }}</div>
-        {% endfor %}
-    {% endwith %}
-
-    <p>Account Number: <b>{{ user.account_no }}</b></p>
+    <p>Account Number: <b>{{ session.account_no }}</b></p>
 
     <div class="balance">
         Available Balance<br>
-        ₹{{ user.balance }}
+        ₹{{ balance }}
     </div>
 
     <a href="{{ url_for('balance') }}"><button>CHECK BALANCE</button></a>
