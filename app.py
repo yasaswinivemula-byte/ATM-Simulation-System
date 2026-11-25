@@ -7,7 +7,6 @@ from flask import Flask, render_template, request, session, redirect
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "atm_project_secret_key")
 
-# Keep the database in the project folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, "atm.db")
 
@@ -16,7 +15,7 @@ def connect_db():
     return sqlite3.connect(DATABASE)
 
 
-# Create database tables automatically when the app starts
+# Create database and demo account
 def create_database():
     con = connect_db()
     cur = con.cursor()
@@ -48,10 +47,10 @@ def create_database():
     con.close()
 
 
-# IMPORTANT: Run database setup when Render imports this file
 create_database()
 
 
+# Login protection
 def login_required(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
@@ -61,6 +60,7 @@ def login_required(function):
     return wrapper
 
 
+# Login page
 @app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "POST":
@@ -93,12 +93,32 @@ def home():
     return render_template("login.html")
 
 
+# Dashboard page
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+    con = connect_db()
+    cur = con.cursor()
+
+    cur.execute(
+        "SELECT balance FROM accounts WHERE account_no=?",
+        (session["account_no"],)
+    )
+
+    account = cur.fetchone()
+    con.close()
+
+    if account is None:
+        session.clear()
+        return redirect("/")
+
+    return render_template(
+        "dashboard.html",
+        balance=account[0]
+    )
 
 
+# Check balance
 @app.route("/balance")
 @login_required
 def balance():
@@ -116,6 +136,7 @@ def balance():
     return render_template("balance.html", balance=balance_amount)
 
 
+# Deposit money
 @app.route("/deposit", methods=["GET", "POST"])
 @login_required
 def deposit():
@@ -152,6 +173,7 @@ def deposit():
         "SELECT balance FROM accounts WHERE account_no=?",
         (account_no,)
     )
+
     balance_amount = cur.fetchone()[0]
     con.close()
 
@@ -162,6 +184,7 @@ def deposit():
     )
 
 
+# Withdraw money
 @app.route("/withdraw", methods=["GET", "POST"])
 @login_required
 def withdraw():
@@ -179,6 +202,7 @@ def withdraw():
                 "SELECT balance FROM accounts WHERE account_no=?",
                 (account_no,)
             )
+
             balance_amount = cur.fetchone()[0]
 
             if amount <= 0:
@@ -206,6 +230,7 @@ def withdraw():
         "SELECT balance FROM accounts WHERE account_no=?",
         (account_no,)
     )
+
     balance_amount = cur.fetchone()[0]
     con.close()
 
@@ -216,6 +241,7 @@ def withdraw():
     )
 
 
+# Mini statement
 @app.route("/statement")
 @login_required
 def statement():
@@ -228,6 +254,7 @@ def statement():
         "SELECT balance FROM accounts WHERE account_no=?",
         (account_no,)
     )
+
     balance_amount = cur.fetchone()[0]
 
     cur.execute("""
@@ -251,6 +278,7 @@ def statement():
     )
 
 
+# Logout
 @app.route("/logout")
 def logout():
     session.clear()
